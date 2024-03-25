@@ -1,6 +1,9 @@
+# Concurrent Webserver
+
+
 # Overview
 
-In this assignment, you will be developing a concurrent web server. To
+In this project, you will be developing a concurrent web server. To
 simplify this project, we are providing you with the code for a non-concurrent
 (but working) web server. This basic web server operates with only a single
 thread; it will be your job to make the web server multi-threaded so that it

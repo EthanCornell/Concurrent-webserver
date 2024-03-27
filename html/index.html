@@ -12,38 +12,73 @@
 </head>
 <body>
 <h1>Multi-thread Performance Test</h1>
+<p>Each client request can be processed by a separate thread, allowing the server to handle a higher volume of requests simultaneously.</p>
 <div>
     <label for="numThreads">Number of Threads:</label>
     <input type="number" id="numThreads" min="1" value="1">
     <button onclick="startTest()">Start Test</button>
 </div>
 <div id="results"></div>
+<div id="summary"></div>
 
 <script>
+var totalRequests = 0;
+var successfulRequests = 0;
+var failedRequests = 0;
+var totalResponseTime = 0;
+
 function startTest() {
+    totalRequests = 0;
+    successfulRequests = 0;
+    failedRequests = 0;
+    totalResponseTime = 0;
+
     var numThreads = parseInt(document.getElementById('numThreads').value);
     var resultsDiv = document.getElementById('results');
+    var summaryDiv = document.getElementById('summary');
     resultsDiv.innerHTML = '';
+    summaryDiv.innerHTML = '';
+
+    var startTime = performance.now();
 
     for (var i = 0; i < numThreads; i++) {
-        sendRequest(i);
+        sendRequest(i, numThreads, startTime, summaryDiv);
     }
 }
 
-function sendRequest(threadId) {
-    var startTime = performance.now();
+function sendRequest(threadId, totalThreads, startTime, summaryDiv) {
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', 'http://localhost:10000/wt/finexo/index.html', true); // Replace localhost:8080 with your server's address
+    xhr.open('GET', 'http://localhost:10000/wt/finexo/index.html', true); // Replace localhost:10000 with your server's address
     xhr.onreadystatechange = function() {
-        if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-            var endTime = performance.now();
-            var duration = endTime - startTime;
-            var resultDiv = document.createElement('div');
-            resultDiv.textContent = 'Thread ' + threadId + ': Response Time - ' + duration.toFixed(2) + ' ms';
-            document.getElementById('results').appendChild(resultDiv);
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+            totalRequests++;
+            if (xhr.status === 200) {
+                successfulRequests++;
+                var endTime = performance.now();
+                var duration = endTime - startTime;
+                totalResponseTime += duration;
+                var resultDiv = document.createElement('div');
+                resultDiv.textContent = 'Thread ' + threadId + ': Response Time - ' + duration.toFixed(2) + ' ms';
+                document.getElementById('results').appendChild(resultDiv);
+            } else {
+                failedRequests++;
+            }
+            
+            if (totalRequests === totalThreads) {
+                displaySummary(summaryDiv);
+            }
         }
     };
     xhr.send();
+}
+
+function displaySummary(summaryDiv) {
+    var avgResponseTime = totalResponseTime / successfulRequests;
+    var summaryText = 'Total Requests: ' + totalRequests + '<br>' +
+                      'Successful Requests: ' + successfulRequests + '<br>' +
+                      'Failed Requests: ' + failedRequests + '<br>' +
+                      'Average Response Time: ' + avgResponseTime.toFixed(2) + ' ms';
+    summaryDiv.innerHTML = summaryText;
 }
 </script>
 </body>

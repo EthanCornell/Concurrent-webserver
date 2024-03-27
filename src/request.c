@@ -114,6 +114,34 @@ void request_serve_dynamic(int fd, char *filename, char *cgiargs) {
     }
 }
 
+// void request_serve_static(int fd, char *filename, int filesize) {
+//     int srcfd;
+//     char *srcp, filetype[MAXBUF], buf[MAXBUF];
+    
+//     request_get_filetype(filename, filetype);
+//     srcfd = open_or_die(filename, O_RDONLY, 0);
+    
+//     // Rather than call read() to read the file into memory, 
+//     // which would require that we allocate a buffer, we memory-map the file
+//     srcp = mmap_or_die(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);
+//     close_or_die(srcfd);
+    
+//     // put together response
+//     sprintf(buf, ""
+// 	    "HTTP/1.0 200 OK\r\n"
+// 	    "Server: OSTEP WebServer\r\n"
+// 	    "Content-Length: %d\r\n"
+// 	    "Content-Type: %s\r\n\r\n", 
+// 	    filesize, filetype);
+    
+//     write_or_die(fd, buf, strlen(buf));
+    
+//     //  Writes out to the client socket the memory-mapped file 
+//     write_or_die(fd, srcp, filesize);
+//     munmap_or_die(srcp, filesize);
+// }
+
+
 void request_serve_static(int fd, char *filename, int filesize) {
     int srcfd;
     char *srcp, filetype[MAXBUF], buf[MAXBUF];
@@ -126,20 +154,28 @@ void request_serve_static(int fd, char *filename, int filesize) {
     srcp = mmap_or_die(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);
     close_or_die(srcfd);
     
-    // put together response
-    sprintf(buf, ""
-	    "HTTP/1.0 200 OK\r\n"
-	    "Server: OSTEP WebServer\r\n"
-	    "Content-Length: %d\r\n"
-	    "Content-Type: %s\r\n\r\n", 
-	    filesize, filetype);
+    // put together response using snprintf to prevent buffer overflow
+    int written = snprintf(buf, MAXBUF, 
+        "HTTP/1.0 200 OK\r\n"
+        "Server: OSTEP WebServer\r\n"
+        "Content-Length: %d\r\n"
+        "Content-Type: %s\r\n\r\n", 
+        filesize, filetype);
+
+    if (written >= MAXBUF || written < 0) {
+        // Handle error: written == MAXBUF means the output was truncated,
+        // and written < 0 indicates an encoding error.
+        // You might want to log this error or handle it according to your error policy.
+    }
     
     write_or_die(fd, buf, strlen(buf));
     
-    //  Writes out to the client socket the memory-mapped file 
+    // Writes out to the client socket the memory-mapped file 
     write_or_die(fd, srcp, filesize);
     munmap_or_die(srcp, filesize);
 }
+
+
 
 // handle a request
 void request_handle(int fd) {

@@ -26,17 +26,50 @@
 //
 // Send an HTTP request for the specified file 
 //
+// void client_send(int fd, char *filename) {
+//     char buf[MAXBUF];
+//     char hostname[MAXBUF];
+    
+//     gethostname_or_die(hostname, MAXBUF);
+    
+//     /* Form and send the HTTP request */
+//     sprintf(buf, "GET %s HTTP/1.1\n", filename);
+//     sprintf(buf, "%shost: %s\n\r\n", buf, hostname);
+//     write_or_die(fd, buf, strlen(buf));
+// }
+
 void client_send(int fd, char *filename) {
     char buf[MAXBUF];
     char hostname[MAXBUF];
-    
+    int len; // To keep track of the length written into buf
+
     gethostname_or_die(hostname, MAXBUF);
     
-    /* Form and send the HTTP request */
-    sprintf(buf, "GET %s HTTP/1.1\n", filename);
-    sprintf(buf, "%shost: %s\n\r\n", buf, hostname);
+    /* Form the HTTP request */
+    // Safe because we're starting to write and know MAXBUF is the limit
+    len = snprintf(buf, MAXBUF, "GET %s HTTP/1.1\n", filename);
+
+    // Check for truncation and ensure there's space for more
+    if (len < 0 || len >= MAXBUF) {
+        // Handle error: output was truncated or there was an encoding error
+        return;
+    }
+
+    // Append the host header safely, checking for overflow
+    int available = MAXBUF - len; // Calculate available space
+    int additional = snprintf(buf + len, available, "host: %s\n\r\n", hostname);
+
+    // Check if additional content was truncated or if an error occurred
+    if (additional < 0 || additional >= available) {
+        // Handle error: output was truncated or there was an encoding error
+        return;
+    }
+
     write_or_die(fd, buf, strlen(buf));
 }
+
+
+
 
 //
 // Read the HTTP response and print it out
